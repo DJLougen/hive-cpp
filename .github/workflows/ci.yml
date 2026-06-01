@@ -1,0 +1,82 @@
+name: hive-cpp-ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # x86_64 + CPU only. Runs everywhere.
+  cpu:
+    name: x86_64 / Rust ${{ matrix.rust }} / CPU
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rust: ["stable", "1.74.0"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@${{ matrix.rust }}
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: cargo build --all-targets --locked
+      - name: Test
+        run: cargo test --all-targets --locked
+      - name: Lint
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Benchmark (smoke)
+        run: cargo run --release --bin hive-bench
+
+  # aarch64 Linux (Jetson Thor / Grace / RPi 5). Self-hosted because
+  # GitHub does not provide arm64 GPU runners. Same path covers both
+  # Jetson and RPi because both target `aarch64-unknown-linux-gnu`.
+  aarch64:
+    name: aarch64 / Rust stable / Linux
+    runs-on: [self-hosted, aarch64, linux]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install cross deps
+        run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+      - name: Build (release)
+        run: cargo build --release --target aarch64-unknown-linux-gnu --locked
+      - name: Test (host; cross tests need qemu)
+        run: cargo test --locked
+      - name: Benchmark on the host
+        run: |
+          cargo run --release --bin hive-bench --target aarch64-unknown-linux-gnu
+      - name: Upload aarch64 binary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hive-cpp-aarch64-linux
+          path: target/aarch64-unknown-linux-gnu/release/hive-bench
+
+  # Android phone (aarch64-linux-android). Self-hosted with the NDK
+  # installed; the matrix entry is *skipped* if the runner does not
+  # have one. The matrix target is documented in docs/android-build.md.
+  android:
+    name: android / aarch64-linux-android / NDK
+    runs-on: [self-hosted, android, ndk]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Verify NDK
+        run: |
+          if [ -z "$ANDROID_NDK_HOME" ]; then
+            echo "ANDROID_NDK_HOME is not set; skipping android build"
+            exit 0
+          fi
+          ls "$ANDROID_NDK_HOME"
+      - name: Build (release)
+        if: env.ANDROID_NDK_HOME != ''
+        run: |
+          cargo build --release --target aarch64-linux-android --locked
+      - name: Upload android binary
+        if: always() && env.ANDROID_NDK_HOME != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: hive-cpp-aarch64-android
+          path: target/aarch64-linux-android/release/hive-bench

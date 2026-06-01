@@ -1,0 +1,37 @@
+# Byte-compiled
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+
+# Build
+build/
+dist/
+target/
+Cargo.lock.bak
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+*.lcov
+criterion/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Hive-cpp local artefacts
+runs/
+*.json.bak
+.cache/

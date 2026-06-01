@@ -1,0 +1,15 @@
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy"]
+profile = "minimal"
+
+# Jetson Thor / Grace / Orin. Used for the cross-build path
+# documented in docs/cross-build.md.
+[target.aarch64-unknown-linux-gnu]
+
+# Android phones (aarch64). The android-target install carries
+# the NDK sysroot and a minimal libc. We need `linker` set to
+# the NDK's clang for static-binary builds. The CI matrix
+# covers this on a self-hosted Linux runner that has the
+# NDK on $PATH.
+[target.aarch64-linux-android]
